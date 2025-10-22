@@ -121,6 +121,14 @@ class MoodTrackerPage extends StatefulWidget {
 
 class _MoodTrackerPageState extends State<MoodTrackerPage> {
   int? _selectedMood; // 0 = mad, 1 = neutral, 2 = happy
+  String? get _selectedLabel {
+  switch (_selectedMood) {
+    case 0: return 'Mad';
+    case 1: return 'Neutral';
+    case 2: return 'Happy';
+    default: return null;
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -157,6 +165,13 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            _selectedMood == null
+                ? const SizedBox.shrink()
+                : Text(
+                    'Selected: ${_selectedLabel!}',
+                    textAlign: TextAlign.center,
+                  ),
             const SizedBox(height: 24),
             SizedBox(
               height: 48,
@@ -199,6 +214,7 @@ class _MoodFace extends StatelessWidget {
         height: 64,
         alignment: Alignment.center,
         decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFBDBDBD) : null,
           border: Border.all(color: isSelected ? const Color(0xFF808000) : Colors.grey),
           borderRadius: BorderRadius.circular(8),
         ),
