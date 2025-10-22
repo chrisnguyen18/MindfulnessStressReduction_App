@@ -30,8 +30,8 @@ class HomePage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: const [
-            Text(
+          children: [
+            const Text(
               'Mindfulness & Stress Reduction',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
@@ -45,7 +45,14 @@ class HomePage extends StatelessWidget {
             // Buttons
             _HomeButton(label: 'Guided Exercises'),
             SizedBox(height: 12),
-            _HomeButton(label: 'Mood Tracker'),
+            _HomeButton(
+              label: 'Mood Tracker',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MoodTrackerPage()),
+                  );
+                },
+              ),
             SizedBox(height: 12),
             _HomeButton(label: 'Log Thoughts'),
             SizedBox(height: 12),
@@ -89,16 +96,120 @@ class _AffirmationCard extends StatelessWidget {
 
 class _HomeButton extends StatelessWidget {
   final String label;
-  const _HomeButton({required this.label});
+  final VoidCallback? onPressed;
+  const _HomeButton({super.key, required this.label, this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 48,
       child: ElevatedButton(
-        onPressed: null, // Still working
+        onPressed: onPressed,
         child: Text(label),
       ),
     );
   }
 }
+
+// Mood tracker page
+class MoodTrackerPage extends StatefulWidget {
+  const MoodTrackerPage({super.key});
+
+  @override
+  State<MoodTrackerPage> createState() => _MoodTrackerPageState();
+}
+
+class _MoodTrackerPageState extends State<MoodTrackerPage> {
+  int? _selectedMood; // 0 = mad, 1 = neutral, 2 = happy
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mood Tracker')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'How are you feeling today?',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _MoodFace(
+                  label: '😡',
+                  isSelected: _selectedMood == 0,
+                  onTap: () => setState(() => _selectedMood = 0),
+                ),
+                _MoodFace(
+                  label: '😐',
+                  isSelected: _selectedMood == 1,
+                  onTap: () => setState(() => _selectedMood = 1),
+                ),
+                _MoodFace(
+                  label: '😄',
+                  isSelected: _selectedMood == 2,
+                  onTap: () => setState(() => _selectedMood = 2),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _selectedMood == null
+                    ? null
+                    : () {
+                        // No saving function yet
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Mood submitted')),
+                        );
+                        setState(() => _selectedMood = null);
+                      },
+                child: const Text('Submit'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MoodFace extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  const _MoodFace({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: 64,
+        height: 64,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border.all(color: isSelected ? const Color(0xFF808000) : Colors.grey),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 28),
+        ),
+      ),
+    );
+  }
+}
+
+
+
