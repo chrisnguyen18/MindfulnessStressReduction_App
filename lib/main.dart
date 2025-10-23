@@ -54,7 +54,14 @@ class HomePage extends StatelessWidget {
                 },
               ),
             SizedBox(height: 12),
-            _HomeButton(label: 'Log Thoughts'),
+            _HomeButton(
+              label: 'Log Thoughts',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LogThoughtsPage()),
+                );
+              },
+            ),
             SizedBox(height: 12),
             _HomeButton(label: 'View Submissions'),
           ],
@@ -111,7 +118,7 @@ class _HomeButton extends StatelessWidget {
   }
 }
 
-// Mood tracker page
+// Mood tracker page (No storage yet)
 class MoodTrackerPage extends StatefulWidget {
   const MoodTrackerPage({super.key});
 
@@ -227,5 +234,63 @@ class _MoodFace extends StatelessWidget {
   }
 }
 
+// Log Thoughts page (no storage yet)
+class LogThoughtsPage extends StatefulWidget {
+  const LogThoughtsPage({super.key});
 
+  @override
+  State<LogThoughtsPage> createState() => _LogThoughtsPageState();
+}
 
+class _LogThoughtsPageState extends State<LogThoughtsPage> {
+  final TextEditingController _controller = TextEditingController();
+  bool _canSubmit = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Log Thoughts')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _controller,
+              maxLines: 6,
+              decoration: const InputDecoration(
+                hintText: 'Write your thoughts...',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                setState(() => _canSubmit = value.trim().isNotEmpty);
+              },
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _canSubmit
+                    ? () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Entry submitted')),
+                        );
+                        _controller.clear();
+                        setState(() => _canSubmit = false);
+                      }
+                    : null,
+                child: const Text('Submit'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
