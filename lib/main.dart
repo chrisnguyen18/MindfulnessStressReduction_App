@@ -43,7 +43,14 @@ class HomePage extends StatelessWidget {
             SizedBox(height: 24),
 
             // Buttons
-            _HomeButton(label: 'Guided Exercises'),
+            _HomeButton(
+              label: 'Guided Exercises',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const GuidedExercisesPage()),
+                );
+              },
+            ),
             SizedBox(height: 12),
             _HomeButton(
               label: 'Mood Tracker',
@@ -117,6 +124,41 @@ class _HomeButton extends StatelessWidget {
     );
   }
 }
+
+// Guided Exercises page
+class GuidedExercisesPage extends StatelessWidget {
+  const GuidedExercisesPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final exercises = const [
+      'Exercise 1 (4-7-8 Breathing)',
+      'Exercise 2 (Meditaion Audio)',
+      'Exercise 3 (Mindful Pause)',
+    ];
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Guided Exercises')),
+      body: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: exercises.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            title: Text(exercises[index]),
+            trailing: const Icon(Icons.play_arrow),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Opening: ${exercises[index]}')),
+              );
+            },
+          );
+        },
+        separatorBuilder: (context, _) => const Divider(height: 1),
+      ),
+    );
+  }
+}
+
 
 // Mood tracker page (No storage yet)
 class MoodTrackerPage extends StatefulWidget {
@@ -235,7 +277,7 @@ class _MoodFace extends StatelessWidget {
 }
 
 // Log Thoughts page (no storage yet)
-class LogThoughtsPage extends StatefulWidget {
+class LogThoughtsPage extends StatefulWidget { 
   const LogThoughtsPage({super.key});
 
   @override
@@ -294,3 +336,8 @@ class _LogThoughtsPageState extends State<LogThoughtsPage> {
     );
   }
 }
+
+
+
+
+
