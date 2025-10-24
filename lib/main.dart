@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 void main() => runApp(const MindfulnessApp());
 
@@ -133,7 +134,7 @@ class GuidedExercisesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final exercises = const [
       'Exercise 1 (4-7-8 Breathing)',
-      'Exercise 2 (Meditaion Audio)',
+      'Exercise 2 (Meditation Audio)',
       'Exercise 3 (Mindful Pause)',
     ];
 
@@ -147,9 +148,15 @@ class GuidedExercisesPage extends StatelessWidget {
             title: Text(exercises[index]),
             trailing: const Icon(Icons.play_arrow),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Opening: ${exercises[index]}')),
-              );
+              if (index == 0) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const FirstExercisePage()),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Opening: ${exercises[index]}')),
+                );
+              }
             },
           );
         },
@@ -158,6 +165,122 @@ class GuidedExercisesPage extends StatelessWidget {
     );
   }
 }
+
+// Exercise 1 page (4-7-8 Breathing)
+class FirstExercisePage extends StatefulWidget {
+  const FirstExercisePage({super.key});
+
+  @override
+  State<FirstExercisePage> createState() => _FirstExercisePageState();
+}
+
+class _FirstExercisePageState extends State<FirstExercisePage> {
+  String _phase = 'Ready';
+  int _secondsLeft = 0;
+  Timer? _timer;
+
+  void _start() {
+    _timer?.cancel();
+    setState(() {
+      _phase = 'Inhale';
+      _secondsLeft = 4;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (_secondsLeft > 1) {
+        setState(() => _secondsLeft--);
+      } else {
+        if (_phase == 'Inhale') {
+          setState(() {
+            _phase = 'Hold';
+            _secondsLeft = 7;
+          });
+        } else if (_phase == 'Hold') {
+          setState(() {
+            _phase = 'Exhale';
+            _secondsLeft = 8;
+          });
+        } else if (_phase == 'Exhale') {
+          t.cancel();
+          setState(() {
+            _phase = 'Done';
+            _secondsLeft = 0;
+          });
+        }
+      }
+    });
+  }
+
+  void _reset() {
+    _timer?.cancel();
+    setState(() {
+      _phase = 'Ready';
+      _secondsLeft = 0;
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('4-7-8 Breathing')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Phase: $_phase',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _secondsLeft > 0 ? 'Seconds left: $_secondsLeft' : '',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+
+            SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _phase == 'Ready' || _phase == 'Done' ? _start : null,
+                child: const Text('Start'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 48,
+              child: OutlinedButton(
+                onPressed: _reset,
+                child: const Text('Reset'),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SizedBox(
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Done'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
 
 
 // Mood tracker page (No storage yet)
@@ -336,8 +459,3 @@ class _LogThoughtsPageState extends State<LogThoughtsPage> {
     );
   }
 }
-
-
-
-
-
