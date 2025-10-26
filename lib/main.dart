@@ -1,9 +1,16 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:csv/csv.dart';
 import 'dart:async';
+import 'package:audioplayers/audioplayers.dart';
 
-// global temp storage
+
+//global temporary storage (only saves during user session, will erase when user exits app)
 List<int> globalMoodHistory = [];
-List<String> globalThoughts =[];
+List<String> globalThoughts = [];
+List<Map<String, String>> favoriteQuotes = [];
+
 
 void main() => runApp(const MindfulnessApp());
 
@@ -13,10 +20,35 @@ class MindfulnessApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'Mindfulness & Stress Reduction',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4CAF50)),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        scaffoldBackgroundColor: const Color(0xFFF5F7F8),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.teal,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        cardTheme: const CardThemeData(
+          color: Colors.white,
+          shadowColor: Colors.black12,
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+        ),
+        textTheme: const TextTheme(
+          bodyMedium:
+              TextStyle(fontSize: 16, color: Colors.black87, height: 1.4),
+          titleMedium: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.w600, color: Colors.teal),
+        ),
         useMaterial3: true,
       ),
       home: const HomePage(),
@@ -24,8 +56,15 @@ class MindfulnessApp extends StatelessWidget {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final GlobalKey<_AffirmationCardState> _affirmationKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -41,11 +80,11 @@ class HomePage extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-            // Daily affirmation
-            _AffirmationCard(),
-            SizedBox(height: 24),
+            // Daily affirmation with key
+            AffirmationCard(key: _affirmationKey),
+            const SizedBox(height: 24),
 
             // Buttons
             _HomeButton(
@@ -53,34 +92,34 @@ class HomePage extends StatelessWidget {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const GuidedExercisesPage()),
-                );
+                ).then((_) => _affirmationKey.currentState?._loadRandomQuote());
               },
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             _HomeButton(
               label: 'Mood Tracker',
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const MoodTrackerPage()),
-                  );
-                },
-              ),
-            SizedBox(height: 12),
+                ).then((_) => _affirmationKey.currentState?._loadRandomQuote());
+              },
+            ),
+            const SizedBox(height: 12),
             _HomeButton(
               label: 'Log Thoughts',
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const LogThoughtsPage()),
-                );
+                ).then((_) => _affirmationKey.currentState?._loadRandomQuote());
               },
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             _HomeButton(
               label: 'View Submissions',
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ViewSubmissionsPage()),
-                );
+                ).then((_) => _affirmationKey.currentState?._loadRandomQuote());
               },
             ),
           ],
@@ -90,8 +129,50 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class _AffirmationCard extends StatelessWidget {
-  const _AffirmationCard();
+class AffirmationCard extends StatefulWidget {
+  const AffirmationCard({super.key});
+
+  @override
+  State<AffirmationCard> createState() => _AffirmationCardState();
+}
+
+class _AffirmationCardState extends State<AffirmationCard> {
+  String _quote = 'Loading...';
+  String _author = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRandomQuote();
+  }
+
+  Future<void> _loadRandomQuote() async {
+    try {
+      final csvData = await rootBundle.loadString('assets/quotes.csv');
+      final rows = const CsvToListConverter(eol: '\n', shouldParseNumbers: false).convert(csvData);
+      final validRows = rows.where((row) => row.length >= 2 && row[0] != 'Quote').toList();
+
+      if (validRows.isEmpty) {
+        setState(() {
+          _quote = 'No quotes available';
+          _author = '';
+        });
+        return;
+      }
+
+      final randomRow = validRows[Random().nextInt(validRows.length)];
+      setState(() {
+        _quote = randomRow[0].toString();
+        _author = randomRow[1].toString();
+      });
+    } catch (e) {
+      setState(() {
+        _quote = 'Error loading quote';
+        _author = '';
+      });
+      print(e);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,20 +180,30 @@ class _AffirmationCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Color(0xFF808000)),
+        border: Border.all(color: Colors.green),
       ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
         children: [
-          Text(
+          const Text(
             'Daily Affirmation',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
-          SizedBox(height: 8),
-          Text(
-            '“Placeholder for quote.”',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontStyle: FontStyle.italic),
+          const SizedBox(height: 8),
+          Text(_quote, textAlign: TextAlign.center, style: const TextStyle(fontStyle: FontStyle.italic)),
+          if (_author.isNotEmpty) Text('- $_author', textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 40,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                favoriteQuotes.add({'quote': _quote, 'author': _author});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Saved to favorites!')),
+                );
+              },
+              icon: const Icon(Icons.favorite),
+              label: const Text('Save as Favorite'),
+            ),
           ),
         ],
       ),
@@ -137,7 +228,8 @@ class _HomeButton extends StatelessWidget {
   }
 }
 
-// Guided Exercises page
+
+// Guided Exercises Page
 class GuidedExercisesPage extends StatelessWidget {
   const GuidedExercisesPage({super.key});
 
@@ -159,14 +251,27 @@ class GuidedExercisesPage extends StatelessWidget {
             title: Text(exercises[index]),
             trailing: const Icon(Icons.play_arrow),
             onTap: () {
-              if (index == 0) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const FirstExercisePage()),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Opening: ${exercises[index]}')),
-                );
+              switch (index) {
+                case 0: // Breathing exercise
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BreathingExercisePage()),
+                  );
+                  break;
+
+                case 1: // Meditation audio
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MeditationAudioPage()),
+                  );
+                  break;
+
+                case 2: // Mindful pause
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MindfulPausePage()),
+                  );
+                  break;
               }
             },
           );
@@ -177,55 +282,44 @@ class GuidedExercisesPage extends StatelessWidget {
   }
 }
 
-// Exercise 1 page (4-7-8 Breathing)
-class FirstExercisePage extends StatefulWidget {
-  const FirstExercisePage({super.key});
-
+// Exercise 1: 4-7-8 Breathing
+class BreathingExercisePage extends StatefulWidget {
+  const BreathingExercisePage({super.key});
   @override
-  State<FirstExercisePage> createState() => _FirstExercisePageState();
+  State<BreathingExercisePage> createState() => _BreathingExercisePageState();
 }
 
-class _FirstExercisePageState extends State<FirstExercisePage> {
-  String _phase = 'Ready';
-  int _secondsLeft = 0;
+class _BreathingExercisePageState extends State<BreathingExercisePage> {
+  int _step = 0;
+  int _seconds = 0;
   Timer? _timer;
+  final List<String> _steps = ['Inhale', 'Hold', 'Exhale'];
+  final List<int> _durations = [4, 7, 8];
 
-  void _start() {
+  void _startExercise() {
     _timer?.cancel();
-    setState(() {
-      _phase = 'Inhale';
-      _secondsLeft = 4;
-    });
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (_secondsLeft > 1) {
-        setState(() => _secondsLeft--);
-      } else {
-        if (_phase == 'Inhale') {
-          setState(() {
-            _phase = 'Hold';
-            _secondsLeft = 7;
-          });
-        } else if (_phase == 'Hold') {
-          setState(() {
-            _phase = 'Exhale';
-            _secondsLeft = 8;
-          });
-        } else if (_phase == 'Exhale') {
-          t.cancel();
-          setState(() {
-            _phase = 'Done';
-            _secondsLeft = 0;
-          });
+    _step = 0;
+    _seconds = _durations[_step];
+
+    setState(() {}); // initial value will be 4 instead of 3
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        if (_seconds > 1) {
+          _seconds--;
+        } else {
+          _step = (_step + 1) % _steps.length;
+          _seconds = _durations[_step];
         }
-      }
+      });
     });
   }
 
-  void _reset() {
+  void _stopExercise() {
     _timer?.cancel();
     setState(() {
-      _phase = 'Ready';
-      _secondsLeft = 0;
+      _step = 0;
+      _seconds = 0;
     });
   }
 
@@ -239,52 +333,26 @@ class _FirstExercisePageState extends State<FirstExercisePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('4-7-8 Breathing')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Phase: $_phase',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+              _steps[_step],
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
-            Text(
-              _secondsLeft > 0 ? 'Seconds left: $_secondsLeft' : '',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
+            const SizedBox(height: 16),
+            Text('$_seconds seconds', style: const TextStyle(fontSize: 28)),
             const SizedBox(height: 24),
-
-            SizedBox(
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _phase == 'Ready' || _phase == 'Done' ? _start : null,
-                child: const Text('Start'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 48,
-              child: OutlinedButton(
-                onPressed: _reset,
-                child: const Text('Reset'),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(onPressed: _startExercise, child: const Text('Start')),
+                const SizedBox(width: 16),
+                ElevatedButton(onPressed: _stopExercise, child: const Text('Stop')),
+              ],
             ),
           ],
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SizedBox(
-          height: 48,
-          child: ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: const Text('Done'),
-          ),
         ),
       ),
     );
@@ -292,7 +360,134 @@ class _FirstExercisePageState extends State<FirstExercisePage> {
 }
 
 
-// Mood tracker page
+// Exercise 2: Meditation Audio with timeline
+class MeditationAudioPage extends StatefulWidget {
+  const MeditationAudioPage({super.key});
+  @override
+  State<MeditationAudioPage> createState() => _MeditationAudioPageState();
+}
+
+class _MeditationAudioPageState extends State<MeditationAudioPage> {
+  final AudioPlayer _player = AudioPlayer();
+  bool _isPlaying = false;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _player.onDurationChanged.listen((d) => setState(() => _duration = d));
+    _player.onPositionChanged.listen((p) => setState(() => _position = p));
+    _player.onPlayerComplete.listen((_) => setState(() {
+      _isPlaying = false;
+      _position = Duration.zero;
+    }));
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  Future<void> _togglePlay() async {
+    if (_isPlaying) {
+      await _player.pause();
+    } else {
+      await _player.play(UrlSource('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'));
+    }
+    setState(() => _isPlaying = !_isPlaying);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Meditation Audio')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton.icon(
+              onPressed: _togglePlay,
+              icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+              label: Text(_isPlaying ? 'Pause Meditation' : 'Play Meditation'),
+            ),
+            const SizedBox(height: 24),
+            if (_duration.inSeconds > 0)
+              Slider(
+                value: _position.inSeconds.toDouble(),
+                max: _duration.inSeconds.toDouble(),
+                onChanged: (value) async {
+                  final newPos = Duration(seconds: value.toInt());
+                  await _player.seek(newPos);
+                  setState(() => _position = newPos);
+                },
+              ),
+            Text(
+              '${_position.inMinutes}:${(_position.inSeconds % 60).toString().padLeft(2, '0')} / '
+              '${_duration.inMinutes}:${(_duration.inSeconds % 60).toString().padLeft(2, '0')}',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+// Exercise 3: Mindful Pause
+class MindfulPausePage extends StatefulWidget {
+  const MindfulPausePage({super.key});
+  @override
+  State<MindfulPausePage> createState() => _MindfulPausePageState();
+}
+
+class _MindfulPausePageState extends State<MindfulPausePage> {
+  int _secondsRemaining = 10;
+  Timer? _timer;
+
+  void _startPause() {
+    _timer?.cancel();
+    _secondsRemaining = 10;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        if (_secondsRemaining > 0) {
+          _secondsRemaining--;
+        } else {
+          timer.cancel();
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pause complete!')));
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mindful Pause')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('$_secondsRemaining seconds remaining', style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: _startPause, child: const Text('Start Mindful Pause')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+// Mood Tracker Page 
 class MoodTrackerPage extends StatefulWidget {
   const MoodTrackerPage({super.key});
 
@@ -301,16 +496,20 @@ class MoodTrackerPage extends StatefulWidget {
 }
 
 class _MoodTrackerPageState extends State<MoodTrackerPage> {
-  int? _selectedMood; // 0 = mad, 1 = neutral, 2 = happy
-  List<int> _moodHistory = []; //temp storage of moods
+  int? _selectedMood;
+
   String? get _selectedLabel {
-  switch (_selectedMood) {
-    case 0: return 'Mad';
-    case 1: return 'Neutral';
-    case 2: return 'Happy';
-    default: return null;
+    switch (_selectedMood) {
+      case 0:
+        return 'Mad';
+      case 1:
+        return 'Neutral';
+      case 2:
+        return 'Happy';
+      default:
+        return null;
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -330,33 +529,15 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _MoodFace(
-                  label: '😡',
-                  isSelected: _selectedMood == 0,
-                  onTap: () => setState(() => _selectedMood = 0),
-                ),
-                _MoodFace(
-                  label: '😐',
-                  isSelected: _selectedMood == 1,
-                  onTap: () => setState(() => _selectedMood = 1),
-                ),
-                _MoodFace(
-                  label: '😄',
-                  isSelected: _selectedMood == 2,
-                  onTap: () => setState(() => _selectedMood = 2),
-                ),
+                _MoodFace(label: '😡', isSelected: _selectedMood == 0, onTap: () => setState(() => _selectedMood = 0)),
+                _MoodFace(label: '😐', isSelected: _selectedMood == 1, onTap: () => setState(() => _selectedMood = 1)),
+                _MoodFace(label: '😄', isSelected: _selectedMood == 2, onTap: () => setState(() => _selectedMood = 2)),
               ],
             ),
             const SizedBox(height: 8),
-
-            // show mood text
-            _selectedMood == null
-              ? const SizedBox.shrink()
-              : Text(
-                'Selected: ${_selectedLabel!}',
-                textAlign: TextAlign.center,
-              ),
-            // submit button
+            if (_selectedMood != null)
+              Text('Selected: ${_selectedLabel!}', textAlign: TextAlign.center),
+            const SizedBox(height: 12),
             SizedBox(
               height: 48,
               child: ElevatedButton(
@@ -364,9 +545,7 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
                     ? null
                     : () {
                         globalMoodHistory.add(_selectedMood!);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Mood submitted')),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mood submitted')));
                         setState(() => _selectedMood = null);
                       },
                 child: const Text('Submit'),
@@ -383,11 +562,7 @@ class _MoodFace extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
-  const _MoodFace({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _MoodFace({required this.label, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -402,17 +577,15 @@ class _MoodFace extends StatelessWidget {
           border: Border.all(color: isSelected ? const Color(0xFF808000) : Colors.grey),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 28),
-        ),
+        child: Text(label, style: const TextStyle(fontSize: 28)),
       ),
     );
   }
 }
 
-// Log Thoughts page
-class LogThoughtsPage extends StatefulWidget { 
+
+// Log Thoughts Page 
+class LogThoughtsPage extends StatefulWidget {
   const LogThoughtsPage({super.key});
 
   @override
@@ -445,9 +618,7 @@ class _LogThoughtsPageState extends State<LogThoughtsPage> {
                 hintText: 'Write your thoughts...',
                 border: OutlineInputBorder(),
               ),
-              onChanged: (value) {
-                setState(() => _canSubmit = value.trim().isNotEmpty);
-              },
+              onChanged: (value) => setState(() => _canSubmit = value.trim().isNotEmpty),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -456,28 +627,26 @@ class _LogThoughtsPageState extends State<LogThoughtsPage> {
                 onPressed: _canSubmit
                     ? () {
                         globalThoughts.add(_controller.text.trim());
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Entry Submitted')),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Entry Submitted')));
                         _controller.clear();
-                        setState(() => _canSubmit = _canSubmit = false);
+                        setState(() => _canSubmit = false);
                       }
                     : null,
-                  child: const Text('Submit'),
-                 ),
-               ),
-            ],
-          ),
+                child: const Text('Submit'),
+              ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 }
+
 
 // View Submissions Page
 class ViewSubmissionsPage extends StatelessWidget {
   const ViewSubmissionsPage({super.key});
 
-  // Helper function to convert mood index to emoji + label
   String _moodEmoji(int mood) {
     switch (mood) {
       case 0:
@@ -497,38 +666,103 @@ class ViewSubmissionsPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Your Submissions')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            const Text(
-              'Mood History',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            if (globalMoodHistory.isEmpty)
-              const Text('No moods logged yet.')
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: globalMoodHistory
-                    .map((m) => Text('• ${_moodEmoji(m)}'))
-                    .toList(),
-              ),
-            const SizedBox(height: 24),
-            const Text(
-              'Journal Entries',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            if (globalThoughts.isEmpty)
-              const Text('No thoughts logged yet.')
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: globalThoughts
-                    .map((t) => Text('• $t'))
-                    .toList(),
-              ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, // Left-align everything
+            children: [
+              // Mood History Section
+              const Text('Mood History',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              if (globalMoodHistory.isEmpty)
+                const Text('No moods logged yet.')
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: globalMoodHistory
+                      .map((m) => Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 2,
+                                  offset: Offset(1, 1),
+                                ),
+                              ],
+                            ),
+                            child: Text(_moodEmoji(m),
+                                style: const TextStyle(fontSize: 16)),
+                          ))
+                      .toList(),
+                ),
+              const SizedBox(height: 24),
+
+              // Journal Entries Section
+              const Text('Journal Entries',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              if (globalThoughts.isEmpty)
+                const Text('No thoughts logged yet.')
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: globalThoughts
+                      .map((t) => Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 2,
+                                  offset: Offset(1, 1),
+                                ),
+                              ],
+                            ),
+                            child: Text(t, style: const TextStyle(fontSize: 16)),
+                          ))
+                      .toList(),
+                ),
+              const SizedBox(height: 24),
+
+              // Favorite Quotes Section
+              const Text('Favorite Quotes',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              if (favoriteQuotes.isEmpty)
+                const Text('No favorites saved yet.')
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: favoriteQuotes
+                      .map((f) => Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 2,
+                                  offset: Offset(1, 1),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                                '"${f['quote']}" - ${f['author']}',
+                                style: const TextStyle(fontSize: 16)),
+                          ))
+                      .toList(),
+                ),
+            ],
+          ),
         ),
       ),
     );
