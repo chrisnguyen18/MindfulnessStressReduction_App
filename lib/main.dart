@@ -20,10 +20,35 @@ class MindfulnessApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'Mindfulness & Stress Reduction',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4CAF50)),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        scaffoldBackgroundColor: const Color(0xFFF5F7F8),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.teal,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        cardTheme: const CardThemeData(
+          color: Colors.white,
+          shadowColor: Colors.black12,
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+        ),
+        textTheme: const TextTheme(
+          bodyMedium:
+              TextStyle(fontSize: 16, color: Colors.black87, height: 1.4),
+          titleMedium: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.w600, color: Colors.teal),
+        ),
         useMaterial3: true,
       ),
       home: const HomePage(),
@@ -617,6 +642,7 @@ class _LogThoughtsPageState extends State<LogThoughtsPage> {
   }
 }
 
+
 // View Submissions Page
 class ViewSubmissionsPage extends StatelessWidget {
   const ViewSubmissionsPage({super.key});
@@ -640,45 +666,103 @@ class ViewSubmissionsPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Your Submissions')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            // Mood History 
-            const Text('Mood History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            if (globalMoodHistory.isEmpty)
-              const Text('No moods logged yet.')
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: globalMoodHistory.map((m) => Text('• ${_moodEmoji(m)}')).toList(),
-              ),
-            const SizedBox(height: 24),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, // Left-align everything
+            children: [
+              // Mood History Section
+              const Text('Mood History',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              if (globalMoodHistory.isEmpty)
+                const Text('No moods logged yet.')
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: globalMoodHistory
+                      .map((m) => Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 2,
+                                  offset: Offset(1, 1),
+                                ),
+                              ],
+                            ),
+                            child: Text(_moodEmoji(m),
+                                style: const TextStyle(fontSize: 16)),
+                          ))
+                      .toList(),
+                ),
+              const SizedBox(height: 24),
 
-            // Journal Entries 
-            const Text('Journal Entries', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            if (globalThoughts.isEmpty)
-              const Text('No thoughts logged yet.')
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: globalThoughts.map((t) => Text('• $t')).toList(),
-              ),
-            const SizedBox(height: 24),
+              // Journal Entries Section
+              const Text('Journal Entries',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              if (globalThoughts.isEmpty)
+                const Text('No thoughts logged yet.')
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: globalThoughts
+                      .map((t) => Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 2,
+                                  offset: Offset(1, 1),
+                                ),
+                              ],
+                            ),
+                            child: Text(t, style: const TextStyle(fontSize: 16)),
+                          ))
+                      .toList(),
+                ),
+              const SizedBox(height: 24),
 
-            //  Favorite Quotes (Extra Creative Feature)
-            const Text('Favorite Quotes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            if (favoriteQuotes.isEmpty)
-              const Text('No favorites saved yet.')
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: favoriteQuotes
-                    .map((f) => Text('• "${f['quote']}" - ${f['author']}'))
-                    .toList(),
-              ),
-          ],
+              // Favorite Quotes Section
+              const Text('Favorite Quotes',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              if (favoriteQuotes.isEmpty)
+                const Text('No favorites saved yet.')
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: favoriteQuotes
+                      .map((f) => Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 2,
+                                  offset: Offset(1, 1),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                                '"${f['quote']}" - ${f['author']}',
+                                style: const TextStyle(fontSize: 16)),
+                          ))
+                      .toList(),
+                ),
+            ],
+          ),
         ),
       ),
     );
