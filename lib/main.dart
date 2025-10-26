@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 
+// global temp storage
+List<int> globalMoodHistory = [];
+List<String> globalThoughts =[];
+
 void main() => runApp(const MindfulnessApp());
 
 class MindfulnessApp extends StatelessWidget {
@@ -112,7 +116,7 @@ class _AffirmationCard extends StatelessWidget {
 class _HomeButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
-  const _HomeButton({super.key, required this.label, this.onPressed});
+  const _HomeButton({required this.label, this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -281,9 +285,7 @@ class _FirstExercisePageState extends State<FirstExercisePage> {
 }
 
 
-
-
-// Mood tracker page (No storage yet)
+// Mood tracker page
 class MoodTrackerPage extends StatefulWidget {
   const MoodTrackerPage({super.key});
 
@@ -293,6 +295,7 @@ class MoodTrackerPage extends StatefulWidget {
 
 class _MoodTrackerPageState extends State<MoodTrackerPage> {
   int? _selectedMood; // 0 = mad, 1 = neutral, 2 = happy
+  List<int> _moodHistory = []; //temp storage of moods
   String? get _selectedLabel {
   switch (_selectedMood) {
     case 0: return 'Mad';
@@ -338,20 +341,22 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
               ],
             ),
             const SizedBox(height: 8),
+
+            // show mood text
             _selectedMood == null
-                ? const SizedBox.shrink()
-                : Text(
-                    'Selected: ${_selectedLabel!}',
-                    textAlign: TextAlign.center,
-                  ),
-            const SizedBox(height: 24),
+              ? const SizedBox.shrink()
+              : Text(
+                'Selected: ${_selectedLabel!}',
+                textAlign: TextAlign.center,
+              ),
+            // submit button
             SizedBox(
               height: 48,
               child: ElevatedButton(
                 onPressed: _selectedMood == null
                     ? null
                     : () {
-                        // No saving function yet
+                        globalMoodHistory.add(_selectedMood!);
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Mood submitted')),
                         );
@@ -399,7 +404,7 @@ class _MoodFace extends StatelessWidget {
   }
 }
 
-// Log Thoughts page (no storage yet)
+// Log Thoughts page
 class LogThoughtsPage extends StatefulWidget { 
   const LogThoughtsPage({super.key});
 
@@ -443,19 +448,20 @@ class _LogThoughtsPageState extends State<LogThoughtsPage> {
               child: ElevatedButton(
                 onPressed: _canSubmit
                     ? () {
+                        globalThoughts.add(_controller.text.trim());
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Entry submitted')),
+                          const SnackBar(content: Text('Entry Submitted')),
                         );
                         _controller.clear();
-                        setState(() => _canSubmit = false);
+                        setState(() => _canSubmit = _canSubmit = false);
                       }
                     : null,
-                child: const Text('Submit'),
-              ),
-            ),
-          ],
+                  child: const Text('Submit'),
+                 ),
+               ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
   }
 }
