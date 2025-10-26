@@ -75,7 +75,14 @@ class HomePage extends StatelessWidget {
               },
             ),
             SizedBox(height: 12),
-            _HomeButton(label: 'View Submissions'),
+            _HomeButton(
+              label: 'View Submissions',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ViewSubmissionsPage()),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -463,5 +470,67 @@ class _LogThoughtsPageState extends State<LogThoughtsPage> {
           ),
         ),
       );
+  }
+}
+
+// View Submissions Page
+class ViewSubmissionsPage extends StatelessWidget {
+  const ViewSubmissionsPage({super.key});
+
+  // Helper function to convert mood index to emoji + label
+  String _moodEmoji(int mood) {
+    switch (mood) {
+      case 0:
+        return '😡 Mad';
+      case 1:
+        return '😐 Neutral';
+      case 2:
+        return '😄 Happy';
+      default:
+        return '❓ Unknown';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Your Submissions')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView(
+          children: [
+            const Text(
+              'Mood History',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            if (globalMoodHistory.isEmpty)
+              const Text('No moods logged yet.')
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: globalMoodHistory
+                    .map((m) => Text('• ${_moodEmoji(m)}'))
+                    .toList(),
+              ),
+            const SizedBox(height: 24),
+            const Text(
+              'Journal Entries',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            if (globalThoughts.isEmpty)
+              const Text('No thoughts logged yet.')
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: globalThoughts
+                    .map((t) => Text('• $t'))
+                    .toList(),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
