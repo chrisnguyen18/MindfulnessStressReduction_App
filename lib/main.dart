@@ -1,9 +1,14 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:csv/csv.dart';
 import 'dart:async';
 
-// global temp storage
+//global temporary storage (only saves during user session, will erase when user exits app)
 List<int> globalMoodHistory = [];
-List<String> globalThoughts =[];
+List<String> globalThoughts = [];
+List<Map<String, String>> favoriteQuotes = [];
+
 
 void main() => runApp(const MindfulnessApp());
 
@@ -24,8 +29,15 @@ class MindfulnessApp extends StatelessWidget {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final GlobalKey<_AffirmationCardState> _affirmationKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -41,11 +53,11 @@ class HomePage extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-            // Daily affirmation
-            _AffirmationCard(),
-            SizedBox(height: 24),
+            // Daily affirmation with key
+            AffirmationCard(key: _affirmationKey),
+            const SizedBox(height: 24),
 
             // Buttons
             _HomeButton(
@@ -53,34 +65,34 @@ class HomePage extends StatelessWidget {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const GuidedExercisesPage()),
-                );
+                ).then((_) => _affirmationKey.currentState?._loadRandomQuote());
               },
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             _HomeButton(
               label: 'Mood Tracker',
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const MoodTrackerPage()),
-                  );
-                },
-              ),
-            SizedBox(height: 12),
+                ).then((_) => _affirmationKey.currentState?._loadRandomQuote());
+              },
+            ),
+            const SizedBox(height: 12),
             _HomeButton(
               label: 'Log Thoughts',
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const LogThoughtsPage()),
-                );
+                ).then((_) => _affirmationKey.currentState?._loadRandomQuote());
               },
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             _HomeButton(
               label: 'View Submissions',
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ViewSubmissionsPage()),
-                );
+                ).then((_) => _affirmationKey.currentState?._loadRandomQuote());
               },
             ),
           ],
@@ -90,8 +102,50 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class _AffirmationCard extends StatelessWidget {
-  const _AffirmationCard();
+class AffirmationCard extends StatefulWidget {
+  const AffirmationCard({super.key});
+
+  @override
+  State<AffirmationCard> createState() => _AffirmationCardState();
+}
+
+class _AffirmationCardState extends State<AffirmationCard> {
+  String _quote = 'Loading...';
+  String _author = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRandomQuote();
+  }
+
+  Future<void> _loadRandomQuote() async {
+    try {
+      final csvData = await rootBundle.loadString('assets/quotes.csv');
+      final rows = const CsvToListConverter(eol: '\n', shouldParseNumbers: false).convert(csvData);
+      final validRows = rows.where((row) => row.length >= 2 && row[0] != 'Quote').toList();
+
+      if (validRows.isEmpty) {
+        setState(() {
+          _quote = 'No quotes available';
+          _author = '';
+        });
+        return;
+      }
+
+      final randomRow = validRows[Random().nextInt(validRows.length)];
+      setState(() {
+        _quote = randomRow[0].toString();
+        _author = randomRow[1].toString();
+      });
+    } catch (e) {
+      setState(() {
+        _quote = 'Error loading quote';
+        _author = '';
+      });
+      print(e);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,20 +153,30 @@ class _AffirmationCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Color(0xFF808000)),
+        border: Border.all(color: Colors.green),
       ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
         children: [
-          Text(
+          const Text(
             'Daily Affirmation',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
-          SizedBox(height: 8),
-          Text(
-            '“Placeholder for quote.”',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontStyle: FontStyle.italic),
+          const SizedBox(height: 8),
+          Text(_quote, textAlign: TextAlign.center, style: const TextStyle(fontStyle: FontStyle.italic)),
+          if (_author.isNotEmpty) Text('- $_author', textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 40,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                favoriteQuotes.add({'quote': _quote, 'author': _author});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Saved to favorites!')),
+                );
+              },
+              icon: const Icon(Icons.favorite),
+              label: const Text('Save as Favorite'),
+            ),
           ),
         ],
       ),
@@ -137,7 +201,8 @@ class _HomeButton extends StatelessWidget {
   }
 }
 
-// Guided Exercises page
+
+// Guided Exercises Page 
 class GuidedExercisesPage extends StatelessWidget {
   const GuidedExercisesPage({super.key});
 
@@ -159,15 +224,9 @@ class GuidedExercisesPage extends StatelessWidget {
             title: Text(exercises[index]),
             trailing: const Icon(Icons.play_arrow),
             onTap: () {
-              if (index == 0) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const FirstExercisePage()),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Opening: ${exercises[index]}')),
-                );
-              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Opening: ${exercises[index]}')),
+              );
             },
           );
         },
@@ -177,122 +236,8 @@ class GuidedExercisesPage extends StatelessWidget {
   }
 }
 
-// Exercise 1 page (4-7-8 Breathing)
-class FirstExercisePage extends StatefulWidget {
-  const FirstExercisePage({super.key});
 
-  @override
-  State<FirstExercisePage> createState() => _FirstExercisePageState();
-}
-
-class _FirstExercisePageState extends State<FirstExercisePage> {
-  String _phase = 'Ready';
-  int _secondsLeft = 0;
-  Timer? _timer;
-
-  void _start() {
-    _timer?.cancel();
-    setState(() {
-      _phase = 'Inhale';
-      _secondsLeft = 4;
-    });
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (_secondsLeft > 1) {
-        setState(() => _secondsLeft--);
-      } else {
-        if (_phase == 'Inhale') {
-          setState(() {
-            _phase = 'Hold';
-            _secondsLeft = 7;
-          });
-        } else if (_phase == 'Hold') {
-          setState(() {
-            _phase = 'Exhale';
-            _secondsLeft = 8;
-          });
-        } else if (_phase == 'Exhale') {
-          t.cancel();
-          setState(() {
-            _phase = 'Done';
-            _secondsLeft = 0;
-          });
-        }
-      }
-    });
-  }
-
-  void _reset() {
-    _timer?.cancel();
-    setState(() {
-      _phase = 'Ready';
-      _secondsLeft = 0;
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('4-7-8 Breathing')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Phase: $_phase',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _secondsLeft > 0 ? 'Seconds left: $_secondsLeft' : '',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 24),
-
-            SizedBox(
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _phase == 'Ready' || _phase == 'Done' ? _start : null,
-                child: const Text('Start'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 48,
-              child: OutlinedButton(
-                onPressed: _reset,
-                child: const Text('Reset'),
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SizedBox(
-          height: 48,
-          child: ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: const Text('Done'),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-
-// Mood tracker page
+// Mood Tracker Page 
 class MoodTrackerPage extends StatefulWidget {
   const MoodTrackerPage({super.key});
 
@@ -301,16 +246,20 @@ class MoodTrackerPage extends StatefulWidget {
 }
 
 class _MoodTrackerPageState extends State<MoodTrackerPage> {
-  int? _selectedMood; // 0 = mad, 1 = neutral, 2 = happy
-  List<int> _moodHistory = []; //temp storage of moods
+  int? _selectedMood;
+
   String? get _selectedLabel {
-  switch (_selectedMood) {
-    case 0: return 'Mad';
-    case 1: return 'Neutral';
-    case 2: return 'Happy';
-    default: return null;
+    switch (_selectedMood) {
+      case 0:
+        return 'Mad';
+      case 1:
+        return 'Neutral';
+      case 2:
+        return 'Happy';
+      default:
+        return null;
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -330,33 +279,15 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _MoodFace(
-                  label: '😡',
-                  isSelected: _selectedMood == 0,
-                  onTap: () => setState(() => _selectedMood = 0),
-                ),
-                _MoodFace(
-                  label: '😐',
-                  isSelected: _selectedMood == 1,
-                  onTap: () => setState(() => _selectedMood = 1),
-                ),
-                _MoodFace(
-                  label: '😄',
-                  isSelected: _selectedMood == 2,
-                  onTap: () => setState(() => _selectedMood = 2),
-                ),
+                _MoodFace(label: '😡', isSelected: _selectedMood == 0, onTap: () => setState(() => _selectedMood = 0)),
+                _MoodFace(label: '😐', isSelected: _selectedMood == 1, onTap: () => setState(() => _selectedMood = 1)),
+                _MoodFace(label: '😄', isSelected: _selectedMood == 2, onTap: () => setState(() => _selectedMood = 2)),
               ],
             ),
             const SizedBox(height: 8),
-
-            // show mood text
-            _selectedMood == null
-              ? const SizedBox.shrink()
-              : Text(
-                'Selected: ${_selectedLabel!}',
-                textAlign: TextAlign.center,
-              ),
-            // submit button
+            if (_selectedMood != null)
+              Text('Selected: ${_selectedLabel!}', textAlign: TextAlign.center),
+            const SizedBox(height: 12),
             SizedBox(
               height: 48,
               child: ElevatedButton(
@@ -364,9 +295,7 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
                     ? null
                     : () {
                         globalMoodHistory.add(_selectedMood!);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Mood submitted')),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mood submitted')));
                         setState(() => _selectedMood = null);
                       },
                 child: const Text('Submit'),
@@ -383,11 +312,7 @@ class _MoodFace extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
-  const _MoodFace({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _MoodFace({required this.label, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -402,17 +327,15 @@ class _MoodFace extends StatelessWidget {
           border: Border.all(color: isSelected ? const Color(0xFF808000) : Colors.grey),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 28),
-        ),
+        child: Text(label, style: const TextStyle(fontSize: 28)),
       ),
     );
   }
 }
 
-// Log Thoughts page
-class LogThoughtsPage extends StatefulWidget { 
+
+// Log Thoughts Page 
+class LogThoughtsPage extends StatefulWidget {
   const LogThoughtsPage({super.key});
 
   @override
@@ -445,9 +368,7 @@ class _LogThoughtsPageState extends State<LogThoughtsPage> {
                 hintText: 'Write your thoughts...',
                 border: OutlineInputBorder(),
               ),
-              onChanged: (value) {
-                setState(() => _canSubmit = value.trim().isNotEmpty);
-              },
+              onChanged: (value) => setState(() => _canSubmit = value.trim().isNotEmpty),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -456,20 +377,18 @@ class _LogThoughtsPageState extends State<LogThoughtsPage> {
                 onPressed: _canSubmit
                     ? () {
                         globalThoughts.add(_controller.text.trim());
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Entry Submitted')),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Entry Submitted')));
                         _controller.clear();
-                        setState(() => _canSubmit = _canSubmit = false);
+                        setState(() => _canSubmit = false);
                       }
                     : null,
-                  child: const Text('Submit'),
-                 ),
-               ),
-            ],
-          ),
+                child: const Text('Submit'),
+              ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 }
 
@@ -477,7 +396,6 @@ class _LogThoughtsPageState extends State<LogThoughtsPage> {
 class ViewSubmissionsPage extends StatelessWidget {
   const ViewSubmissionsPage({super.key});
 
-  // Helper function to convert mood index to emoji + label
   String _moodEmoji(int mood) {
     switch (mood) {
       case 0:
@@ -499,33 +417,40 @@ class ViewSubmissionsPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            const Text(
-              'Mood History',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            // Mood History 
+            const Text('Mood History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             if (globalMoodHistory.isEmpty)
               const Text('No moods logged yet.')
             else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: globalMoodHistory
-                    .map((m) => Text('• ${_moodEmoji(m)}'))
-                    .toList(),
+                children: globalMoodHistory.map((m) => Text('• ${_moodEmoji(m)}')).toList(),
               ),
             const SizedBox(height: 24),
-            const Text(
-              'Journal Entries',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+
+            // Journal Entries 
+            const Text('Journal Entries', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             if (globalThoughts.isEmpty)
               const Text('No thoughts logged yet.')
             else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: globalThoughts
-                    .map((t) => Text('• $t'))
+                children: globalThoughts.map((t) => Text('• $t')).toList(),
+              ),
+            const SizedBox(height: 24),
+
+            //  Favorite Quotes (Extra Creative Feature)
+            const Text('Favorite Quotes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            if (favoriteQuotes.isEmpty)
+              const Text('No favorites saved yet.')
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: favoriteQuotes
+                    .map((f) => Text('• "${f['quote']}" - ${f['author']}'))
                     .toList(),
               ),
           ],
